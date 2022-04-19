@@ -1,0 +1,35 @@
+@startuml
+title Cefas procedure
+
+actor Admin as admin
+database Sever as server
+actor NewUser as new
+
+admin -> server: new_user_email
+server -> server: validate_admin_credentials()
+server -> server: slug = create_slug()
+server -> server: link = create_link(slug)
+server -> server: create_db_entry(new_user_email, link, slug, today, state=created)
+server -> new: link
+new --> server: click(link)
+server -> server: update(link_counter += 1)
+server -> server: validate_link(link)
+alt if today > link_date + 5
+server --> new: redirect(404)
+else
+server --> new: redirect(form_page)
+new -> server: data
+server -> server:validate_form()
+server -> server: update_db_entry(state=revision)
+server -> admin: verification_request(data)
+admin --> server: verification
+alt Admin_verification == False
+server -> server: update_db_entry(state=denied)
+server -> new: notification(NotAccepted)
+else
+server -> server: update_db_entry(state=accepted)
+server -> server: save_user(data)
+server -> new: notification(Accepted)
+end alt
+end alt 
+@enduml
