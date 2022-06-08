@@ -1,9 +1,11 @@
+# python modules
 import jwt
 import time
 import datetime
+import os
 
 # local apps
-import apps.Carmeil
+from apps.Carmeil import Carmeil
 
 def validate_token(token):
     secret = os.getenv('SECRET_CEFAS')
@@ -25,7 +27,7 @@ def is_expired(exp_date):
         return True
 
 def generate_url(data):
-    data['date'] = datetime.date.today()
+    data['date'] = datetime.date.today().strftime('%d/%m/%Y')
     token = jwt.encode(
             payload = data,
             key = os.getenv('SECRET_CEFAS')
@@ -34,7 +36,7 @@ def generate_url(data):
     url = F'{server}/validation/?token={token}'
     return url, token
 
-def new_user_request(data):
+def new_user_request(data, fields):
     '''
     In data['content'] you can add your message and type [url]
     instead of url with token that will be then added
@@ -42,19 +44,35 @@ def new_user_request(data):
     if not(data.get('email') and data.get('header')
             and data.get('subject') and data.get('content')):
         raise Exception('Data must have email, header, subject, and content')
-    url, token = generate_token(data)
+    user_data = format_data(data, fields)
+    url, token = generate_url(user_data)
     new_user_email = data['email']
     header = data['header']
     subject = data['subject']
     content = data['content']
     content = content.replace('[url]', url)
     try:
-        Carmeil.send_mail(
-                receiver = new_user_email,
+        email = Carmeil(
+                'melet.chirino@gmail.com',#from
+                new_user_email,#to
+                subject,#subject
+                '',
                 header = header,
-                subject = subject,
                 content = content
                 )
+        email.send()
         return 'OK'
     except Exception as e:
         return e
+
+def format_data(data, fields):
+    print(F'original data = {data}')
+    print(F'-----------\nOriginal keys= {data.keys()}')
+
+    new_data = dict()
+    for field in data:
+        for field_ in fields:
+            if field == field_:
+                new_data[field] = data[field][0]
+    print(F'\n-----\nnew_data = {new_data}')
+    return new_data
